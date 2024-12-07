@@ -19,20 +19,19 @@ jobs:
       - image: cimg/node:18.16
     steps:
       - checkout
-      - run:
-          name: Debug - List Directory Contents
-          command: |
-            pwd
-            ls -la
-            ls -la server
-      - node/install-packages:
-          pkg-manager: npm
-          app-dir: ~/project/server
+      - restore_cache:
+          keys:
+            - v1-server-deps-{{ checksum "server/package-lock.json" }}
+            - v1-server-deps-
       - run:
           name: Install Server Dependencies
           command: |
             cd server
-            npm install
+            npm ci
+      - save_cache:
+          paths:
+            - server/node_modules
+          key: v1-server-deps-{{ checksum "server/package-lock.json" }}
       - run:
           name: Run Server Tests
           command: |
@@ -42,24 +41,11 @@ jobs:
           name: Build Server
           command: |
             cd server
-            echo "Current directory contents:"
-            ls -la
-            echo "Running build..."
             npm run build
-            echo "Build complete. Dist directory contents:"
-            ls -la dist
       - persist_to_workspace:
           root: .
           paths:
             - server/dist
-      - run:
-          name: Debug - Slack Token
-          command: |
-            if [ -n "$SLACK_ACCESS_TOKEN" ]; then
-              echo "Slack token is set"
-            else
-              echo "Slack token is NOT set"
-            fi
       - slack/notify:
           channel: circleci-builds
           event: always
