@@ -14,7 +14,7 @@ parameters:
     default: false
 
 jobs:
-  build-and-test-server:
+  build-and-test-web-portal:
     docker:
       - image: cimg/node:18.16
     steps:
@@ -26,68 +26,86 @@ jobs:
             pwd
             echo "\nRoot directory contents:"
             ls -la
-            echo "\nServer directory contents:"
-            ls -la server/
+            echo "\nWeb Portal directory contents:"
+            ls -la web-portal/
             echo "\nPackage.json content:"
-            cat server/package.json
+            cat web-portal/package.json
       - restore_cache:
           keys:
-            - v1-server-deps-{{ checksum "server/package.json" }}
-            - v1-server-deps-
+            - v1-web-portal-deps-{{ checksum "web-portal/package.json" }}
+            - v1-web-portal-deps-
       - run:
-          name: Install Server Dependencies
+          name: Install Web Portal Dependencies
           command: |
-            cd server
+            cd web-portal
             npm install
       - run:
-          name: Debug - Check Node Modules After Install
+          name: Lint Web Portal
           command: |
-            echo "Server directory contents after install:"
-            ls -la server/
-            echo "\nNode modules directory:"
-            ls -la server/node_modules/
-            echo "\nInstalled dependencies:"
-            cd server && npm list --depth=0
-      - save_cache:
-          paths:
-            - server/node_modules
-          key: v1-server-deps-{{ checksum "server/package.json" }}
+            cd web-portal
+            npm run lint
       - run:
-          name: Run Server Tests
+          name: Run Web Portal Tests
           command: |
-            cd server
+            cd web-portal
             npm test
       - run:
-          name: Build Server
+          name: Build Web Portal
           command: |
-            cd server
+            cd web-portal
             npm run build
             echo "\nDist directory contents after build:"
             ls -la dist/
       - persist_to_workspace:
           root: .
           paths:
-            - server/dist
+            - web-portal/dist
       - slack/notify:
           channel: circleci-builds
           event: always
           custom: |
             {
-              "text": "Server Build Status",
               "blocks": [
                 {
-                  "type": "section",
+                  "type": "header",
                   "text": {
-                    "type": "mrkdwn",
-                    "text": "*Server Build Status:* ${CIRCLE_JOB}\n*Branch:* ${CIRCLE_BRANCH}\n*Build:* ${CIRCLE_BUILD_NUM}"
+                    "type": "plain_text",
+                    "text": "🌐 Web Portal Build {{ job.status }}",
+                    "emoji": true
                   }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Branch:*\n${CIRCLE_BRANCH}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Build:*\n${CIRCLE_BUILD_NUM}"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Status:*\n{{ job.status }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Duration:*\n{{ job.duration }}"
+                    }
+                  ]
                 }
               ]
             }
 
 workflows:
-  server-workflow:
-    when: << pipeline.parameters.run-server-workflow >>
+  web-portal-workflow:
+    when: << pipeline.parameters.run-web-portal-workflow >>
     jobs:
-      - build-and-test-server:
+      - build-and-test-web-portal:
           context: slack-secrets
