@@ -12,6 +12,95 @@ parameters:
     type: boolean
     default: false
 
+commands:
+  notify-slack-success:
+    steps:
+      - slack/notify:
+          custom: |
+            {
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "✅ Successful Build & Test",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Job*:\n${CIRCLE_JOB}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Branch*:\n${CIRCLE_BRANCH}"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Build*:\n${CIRCLE_BUILD_NUM}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Commit*:\n${CIRCLE_SHA1}"
+                    }
+                  ]
+                }
+              ]
+            }
+          event: always
+
+  notify-slack-fail:
+    steps:
+      - slack/notify:
+          custom: |
+            {
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "❌ Failed Build & Test",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Job*:\n${CIRCLE_JOB}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Branch*:\n${CIRCLE_BRANCH}"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Build*:\n${CIRCLE_BUILD_NUM}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Commit*:\n${CIRCLE_SHA1}"
+                    }
+                  ]
+                }
+              ]
+            }
+          event: always
+
 jobs:
   build-and-test-server:
     docker:
@@ -33,14 +122,8 @@ jobs:
           root: .
           paths:
             - server/dist
-      - slack/notify:
-          event: pass
-          template: success_tagged_deploy_1
-          channel: circleci-builds
-      - slack/notify:
-          event: fail
-          template: basic_fail_1
-          channel: circleci-builds
+      - notify-slack-success
+      - notify-slack-fail
 
   build-and-test-web-portal:
     docker:
@@ -62,14 +145,8 @@ jobs:
           root: .
           paths:
             - web-portal/dist
-      - slack/notify:
-          event: pass
-          template: success_tagged_deploy_1
-          channel: circleci-builds
-      - slack/notify:
-          event: fail
-          template: basic_fail_1
-          channel: circleci-builds
+      - notify-slack-success
+      - notify-slack-fail
 
 workflows:
   server-workflow:
@@ -77,15 +154,19 @@ workflows:
     jobs:
       - build-and-test-server:
           context: slack-secrets
-          filters:
-            branches:
-              ignore: main
+          post-steps:
+            - notify-slack-success:
+                channel: circleci-builds
+            - notify-slack-fail:
+                channel: circleci-builds
 
   web-portal-workflow:
     when: << pipeline.parameters.run-web-portal-workflow >>
     jobs:
       - build-and-test-web-portal:
           context: slack-secrets
-          filters:
-            branches:
-              ignore: main
+          post-steps:
+            - notify-slack-success:
+                channel: circleci-builds
+            - notify-slack-fail:
+                channel: circleci-builds

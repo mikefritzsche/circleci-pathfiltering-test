@@ -15,4 +15,3 @@ workflows:
             web-portal/.* run-web-portal-workflow true
           base-revision: main
           config-path: .circleci/continue-config.yml
-          context: slack-secrets
