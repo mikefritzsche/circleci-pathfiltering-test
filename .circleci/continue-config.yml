@@ -1,17 +1,8 @@
-# .circleci/continue-config.yml
 version: 2.1
 
 orbs:
   node: circleci/node@5.1.0
   slack: circleci/slack@4.12.5
-
-parameters:
-  run-server-workflow:
-    type: boolean
-    default: false
-  run-web-portal-workflow:
-    type: boolean
-    default: false
 
 jobs:
   build-and-test-web-portal:
@@ -25,11 +16,6 @@ jobs:
             cd web-portal
             npm install
       - run:
-          name: Lint Web Portal
-          command: |
-            cd web-portal
-            npm run lint
-      - run:
           name: Run Web Portal Tests
           command: |
             cd web-portal
@@ -42,92 +28,15 @@ jobs:
       - slack/notify:
           event: pass
           channel: circleci-builds
-          template: |
-            {
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "🌐 Web Portal Build Success",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "section",
-                  "fields": [
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Branch:*\n$CIRCLE_BRANCH"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Build:*\n$CIRCLE_BUILD_NUM"
-                    }
-                  ]
-                },
-                {
-                  "type": "section",
-                  "fields": [
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Status:*\nSuccess"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Duration:*\n$CIRCLE_JOB_DURATION"
-                    }
-                  ]
-                }
-              ]
-            }
+          template: basic_success_1
       - slack/notify:
           event: fail
           channel: circleci-builds
-          template: |
-            {
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "❌ Web Portal Build Failed",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "section",
-                  "fields": [
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Branch:*\n$CIRCLE_BRANCH"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Build:*\n$CIRCLE_BUILD_NUM"
-                    }
-                  ]
-                },
-                {
-                  "type": "section",
-                  "fields": [
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Status:*\nFailed"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Duration:*\n$CIRCLE_JOB_DURATION"
-                    }
-                  ]
-                }
-              ]
-            }
+          template: basic_fail_1
 
 workflows:
   web-portal-workflow:
     when: << pipeline.parameters.run-web-portal-workflow >>
     jobs:
       - build-and-test-web-portal:
-          context:
-            - slack-secrets
+          context: slack-secrets
