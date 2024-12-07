@@ -10,7 +10,20 @@ export default [
     files: ['**/*.{js,jsx}'],
     languageOptions: {
       ecmaVersion: 2020,
-      globals: globals.browser,
+      globals: {
+        ...globals.browser,
+        // Add Vitest globals for test files
+        describe: 'readonly',
+        test: 'readonly',
+        it: 'readonly',
+        expect: 'readonly',
+        vitest: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+        vi: 'readonly'
+      },
       parserOptions: {
         ecmaVersion: 'latest',
         ecmaFeatures: { jsx: true },
@@ -33,6 +46,17 @@ export default [
         'warn',
         { allowConstantExport: true },
       ],
+      // Relax some rules for test files
+      'react/display-name': 'off',
+      'react/prop-types': 'off'
     },
   },
+  // Additional config specific to test files
+  {
+    files: ['**/*.test.{js,jsx}', '**/*.spec.{js,jsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+      'no-undef': 'off' // Since we're adding globals above
+    }
+  }
 ]
