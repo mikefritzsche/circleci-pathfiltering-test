@@ -22,7 +22,8 @@ workflows:
             - slack/notify:
                 event: pass
                 channel: circleci-builds
-                template: |
+                template: success_tagged_deploy_1
+                custom: |
                   {
                     "blocks": [
                       {
@@ -38,11 +39,11 @@ workflows:
                         "fields": [
                           {
                             "type": "mrkdwn",
-                            "text": "*Branch:*\n$CIRCLE_BRANCH"
+                            "text": "*Branch:* $CIRCLE_BRANCH"
                           },
                           {
                             "type": "mrkdwn",
-                            "text": "*Build:*\n$CIRCLE_BUILD_NUM"
+                            "text": "*Build:* $CIRCLE_BUILD_NUM"
                           }
                         ]
                       },
@@ -50,32 +51,16 @@ workflows:
                         "type": "section",
                         "text": {
                           "type": "mrkdwn",
-                          "text": "Checking for changes in:\n• Server code (server/*)\n• Web Portal code (web-portal/*)"
+                          "text": "Checking for changes in:\n• Server code\n• Web Portal code"
                         }
                       }
-                      {%- if pipeline.parameters.run-server-workflow == true or pipeline.parameters.run-web-portal-workflow == true -%}
-                      ,{
-                        "type": "section",
-                        "text": {
-                          "type": "mrkdwn",
-                          "text": "*Changes detected in:*\n{% if pipeline.parameters.run-server-workflow == true %}• Server code\n{% endif %}{% if pipeline.parameters.run-web-portal-workflow == true %}• Web Portal code\n{% endif %}"
-                        }
-                      }
-                      {%- else -%}
-                      ,{
-                        "type": "section",
-                        "text": {
-                          "type": "mrkdwn",
-                          "text": "*No changes detected* in monitored paths."
-                        }
-                      }
-                      {%- endif -%}
                     ]
                   }
             - slack/notify:
                 event: fail
                 channel: circleci-builds
-                template: |
+                template: basic_fail_1
+                custom: |
                   {
                     "blocks": [
                       {
@@ -91,20 +76,13 @@ workflows:
                         "fields": [
                           {
                             "type": "mrkdwn",
-                            "text": "*Branch:*\n$CIRCLE_BRANCH"
+                            "text": "*Branch:* $CIRCLE_BRANCH"
                           },
                           {
                             "type": "mrkdwn",
-                            "text": "*Build:*\n$CIRCLE_BUILD_NUM"
+                            "text": "*Build:* $CIRCLE_BUILD_NUM"
                           }
                         ]
-                      },
-                      {
-                        "type": "section",
-                        "text": {
-                          "type": "mrkdwn",
-                          "text": "Error occurred while checking for file changes. Please check the build logs for details."
-                        }
                       }
                     ]
                   }
