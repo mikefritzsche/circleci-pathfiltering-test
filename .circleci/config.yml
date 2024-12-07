@@ -1,9 +1,11 @@
+# .circleci/config.yml
 version: 2.1
 
 setup: true
 
 orbs:
   path-filtering: circleci/path-filtering@0.1.3
+  slack: circleci/slack@4.12.5
 
 workflows:
   always-run:
@@ -15,3 +17,94 @@ workflows:
             web-portal/.* run-web-portal-workflow true
           base-revision: main
           config-path: .circleci/continue-config.yml
+          context: slack-secrets
+          post-steps:
+            - slack/notify:
+                event: pass
+                channel: circleci-builds
+                template: |
+                  {
+                    "blocks": [
+                      {
+                        "type": "header",
+                        "text": {
+                          "type": "plain_text",
+                          "text": "🔍 Path Filter Check Complete",
+                          "emoji": true
+                        }
+                      },
+                      {
+                        "type": "section",
+                        "fields": [
+                          {
+                            "type": "mrkdwn",
+                            "text": "*Branch:*\n$CIRCLE_BRANCH"
+                          },
+                          {
+                            "type": "mrkdwn",
+                            "text": "*Build:*\n$CIRCLE_BUILD_NUM"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "section",
+                        "text": {
+                          "type": "mrkdwn",
+                          "text": "Checking for changes in:\n• Server code (server/*)\n• Web Portal code (web-portal/*)"
+                        }
+                      }
+                      {%- if pipeline.parameters.run-server-workflow == true or pipeline.parameters.run-web-portal-workflow == true -%}
+                      ,{
+                        "type": "section",
+                        "text": {
+                          "type": "mrkdwn",
+                          "text": "*Changes detected in:*\n{% if pipeline.parameters.run-server-workflow == true %}• Server code\n{% endif %}{% if pipeline.parameters.run-web-portal-workflow == true %}• Web Portal code\n{% endif %}"
+                        }
+                      }
+                      {%- else -%}
+                      ,{
+                        "type": "section",
+                        "text": {
+                          "type": "mrkdwn",
+                          "text": "*No changes detected* in monitored paths."
+                        }
+                      }
+                      {%- endif -%}
+                    ]
+                  }
+            - slack/notify:
+                event: fail
+                channel: circleci-builds
+                template: |
+                  {
+                    "blocks": [
+                      {
+                        "type": "header",
+                        "text": {
+                          "type": "plain_text",
+                          "text": "❌ Path Filter Check Failed",
+                          "emoji": true
+                        }
+                      },
+                      {
+                        "type": "section",
+                        "fields": [
+                          {
+                            "type": "mrkdwn",
+                            "text": "*Branch:*\n$CIRCLE_BRANCH"
+                          },
+                          {
+                            "type": "mrkdwn",
+                            "text": "*Build:*\n$CIRCLE_BUILD_NUM"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "section",
+                        "text": {
+                          "type": "mrkdwn",
+                          "text": "Error occurred while checking for file changes. Please check the build logs for details."
+                        }
+                      }
+                    ]
+                  }
