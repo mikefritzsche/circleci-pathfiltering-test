@@ -12,95 +12,6 @@ parameters:
     type: boolean
     default: false
 
-commands:
-  notify-slack-success:
-    steps:
-      - slack/notify:
-          custom: |
-            {
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "✅ Successful Build & Test",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "section",
-                  "fields": [
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Job*:\n${CIRCLE_JOB}"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Branch*:\n${CIRCLE_BRANCH}"
-                    }
-                  ]
-                },
-                {
-                  "type": "section",
-                  "fields": [
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Build*:\n${CIRCLE_BUILD_NUM}"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Commit*:\n${CIRCLE_SHA1}"
-                    }
-                  ]
-                }
-              ]
-            }
-          event: always
-
-  notify-slack-fail:
-    steps:
-      - slack/notify:
-          custom: |
-            {
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "❌ Failed Build & Test",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "section",
-                  "fields": [
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Job*:\n${CIRCLE_JOB}"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Branch*:\n${CIRCLE_BRANCH}"
-                    }
-                  ]
-                },
-                {
-                  "type": "section",
-                  "fields": [
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Build*:\n${CIRCLE_BUILD_NUM}"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Commit*:\n${CIRCLE_SHA1}"
-                    }
-                  ]
-                }
-              ]
-            }
-          event: always
-
 jobs:
   build-and-test-server:
     docker:
@@ -122,8 +33,64 @@ jobs:
           root: .
           paths:
             - server/dist
-      - notify-slack-success
-      - notify-slack-fail
+      - slack/notify:
+          channel: circleci-builds
+          event: pass
+          custom: |
+            {
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "✅ Server Build & Test Successful",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Branch*:\n${CIRCLE_BRANCH}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Build*:\n${CIRCLE_BUILD_NUM}"
+                    }
+                  ]
+                }
+              ]
+            }
+      - slack/notify:
+          channel: circleci-builds
+          event: fail
+          custom: |
+            {
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "❌ Server Build & Test Failed",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Branch*:\n${CIRCLE_BRANCH}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Build*:\n${CIRCLE_BUILD_NUM}"
+                    }
+                  ]
+                }
+              ]
+            }
 
   build-and-test-web-portal:
     docker:
@@ -145,8 +112,64 @@ jobs:
           root: .
           paths:
             - web-portal/dist
-      - notify-slack-success
-      - notify-slack-fail
+      - slack/notify:
+          channel: circleci-builds
+          event: pass
+          custom: |
+            {
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "✅ Web Portal Build & Test Successful",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Branch*:\n${CIRCLE_BRANCH}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Build*:\n${CIRCLE_BUILD_NUM}"
+                    }
+                  ]
+                }
+              ]
+            }
+      - slack/notify:
+          channel: circleci-builds
+          event: fail
+          custom: |
+            {
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "❌ Web Portal Build & Test Failed",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Branch*:\n${CIRCLE_BRANCH}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Build*:\n${CIRCLE_BUILD_NUM}"
+                    }
+                  ]
+                }
+              ]
+            }
 
 workflows:
   server-workflow:
@@ -154,19 +177,9 @@ workflows:
     jobs:
       - build-and-test-server:
           context: slack-secrets
-          post-steps:
-            - notify-slack-success:
-                channel: circleci-builds
-            - notify-slack-fail:
-                channel: circleci-builds
 
   web-portal-workflow:
     when: << pipeline.parameters.run-web-portal-workflow >>
     jobs:
       - build-and-test-web-portal:
           context: slack-secrets
-          post-steps:
-            - notify-slack-success:
-                channel: circleci-builds
-            - notify-slack-fail:
-                channel: circleci-builds
