@@ -20,21 +20,6 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Debug - Check Directory Structure Before Install
-          command: |
-            echo "Current working directory:"
-            pwd
-            echo "\nRoot directory contents:"
-            ls -la
-            echo "\nWeb Portal directory contents:"
-            ls -la web-portal/
-            echo "\nPackage.json content:"
-            cat web-portal/package.json
-      - restore_cache:
-          keys:
-            - v1-web-portal-deps-{{ checksum "web-portal/package.json" }}
-            - v1-web-portal-deps-
-      - run:
           name: Install Web Portal Dependencies
           command: |
             cd web-portal
@@ -54,23 +39,17 @@ jobs:
           command: |
             cd web-portal
             npm run build
-            echo "\nDist directory contents after build:"
-            ls -la dist/
-      - persist_to_workspace:
-          root: .
-          paths:
-            - web-portal/dist
       - slack/notify:
+          event: pass
           channel: circleci-builds
-          event: always
-          custom: |
+          template: |
             {
               "blocks": [
                 {
                   "type": "header",
                   "text": {
                     "type": "plain_text",
-                    "text": "🌐 Web Portal Build {{ job.status }}",
+                    "text": "🌐 Web Portal Build Success",
                     "emoji": true
                   }
                 },
@@ -79,11 +58,11 @@ jobs:
                   "fields": [
                     {
                       "type": "mrkdwn",
-                      "text": "*Branch:*\n${CIRCLE_BRANCH}"
+                      "text": "*Branch:*\n$CIRCLE_BRANCH"
                     },
                     {
                       "type": "mrkdwn",
-                      "text": "*Build:*\n${CIRCLE_BUILD_NUM}"
+                      "text": "*Build:*\n$CIRCLE_BUILD_NUM"
                     }
                   ]
                 },
@@ -92,11 +71,53 @@ jobs:
                   "fields": [
                     {
                       "type": "mrkdwn",
-                      "text": "*Status:*\n{{ job.status }}"
+                      "text": "*Status:*\nSuccess"
                     },
                     {
                       "type": "mrkdwn",
-                      "text": "*Duration:*\n{{ job.duration }}"
+                      "text": "*Duration:*\n$CIRCLE_JOB_DURATION"
+                    }
+                  ]
+                }
+              ]
+            }
+      - slack/notify:
+          event: fail
+          channel: circleci-builds
+          template: |
+            {
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "❌ Web Portal Build Failed",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Branch:*\n$CIRCLE_BRANCH"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Build:*\n$CIRCLE_BUILD_NUM"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Status:*\nFailed"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Duration:*\n$CIRCLE_JOB_DURATION"
                     }
                   ]
                 }
@@ -108,4 +129,5 @@ workflows:
     when: << pipeline.parameters.run-web-portal-workflow >>
     jobs:
       - build-and-test-web-portal:
-          context: slack-secrets
+          context:
+            - slack-secrets
