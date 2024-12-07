@@ -1,19 +1,19 @@
-# .circleci/continue-config.yml
 version: 2.1
 
 orbs:
   node: circleci/node@5.1.0
+  slack: circleci/slack@4.12.5
 
 parameters:
-  run-server-tests:
+  run-server-workflow:
     type: boolean
     default: false
-  run-web-portal-tests:
+  run-web-portal-workflow:
     type: boolean
     default: false
 
 jobs:
-  test-server:
+  build-and-test-server:
     docker:
       - image: cimg/node:18.16
     steps:
@@ -24,8 +24,25 @@ jobs:
       - run:
           name: Run Server Tests
           command: cd server && npm test
+      - run:
+          name: Build Server
+          command: |
+            cd server
+            npm run build
+      - persist_to_workspace:
+          root: .
+          paths:
+            - server/dist
+      - slack/notify:
+          event: pass
+          template: success_tagged_deploy_1
+          channel: circleci-builds
+      - slack/notify:
+          event: fail
+          template: basic_fail_1
+          channel: circleci-builds
 
-  test-web-portal:
+  build-and-test-web-portal:
     docker:
       - image: cimg/node:18.16
     steps:
@@ -36,25 +53,39 @@ jobs:
       - run:
           name: Run Web Portal Tests
           command: cd web-portal && npm test
+      - run:
+          name: Build Web Portal
+          command: |
+            cd web-portal
+            npm run build
+      - persist_to_workspace:
+          root: .
+          paths:
+            - web-portal/dist
+      - slack/notify:
+          event: pass
+          template: success_tagged_deploy_1
+          channel: circleci-builds
+      - slack/notify:
+          event: fail
+          template: basic_fail_1
+          channel: circleci-builds
 
 workflows:
-  run-tests:
-    when: true
+  server-workflow:
+    when: << pipeline.parameters.run-server-workflow >>
     jobs:
-      - test-server:
-          name: Server Tests
+      - build-and-test-server:
+          context: slack-secrets
           filters:
             branches:
               ignore: main
-          when:
-            and:
-              - equal: [ true, << pipeline.parameters.run-server-tests >> ]
 
-      - test-web-portal:
-          name: Web Portal Tests
+  web-portal-workflow:
+    when: << pipeline.parameters.run-web-portal-workflow >>
+    jobs:
+      - build-and-test-web-portal:
+          context: slack-secrets
           filters:
             branches:
               ignore: main
-          when:
-            and:
-              - equal: [ true, << pipeline.parameters.run-web-portal-tests >> ]

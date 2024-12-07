@@ -11,7 +11,8 @@ workflows:
       - path-filtering/filter:
           name: check-updated-files
           mapping: |
-            server/.* run-server-tests true
-            web-portal/.* run-web-portal-tests true
+            server/.* run-server-workflow true
+            web-portal/.* run-web-portal-workflow true
           base-revision: main
           config-path: .circleci/continue-config.yml
+          context: slack-secrets
