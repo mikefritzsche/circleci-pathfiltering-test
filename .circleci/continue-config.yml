@@ -1,0 +1,60 @@
+version: 2.1
+
+orbs:
+  node: circleci/node@5.1.0
+
+parameters:
+  run-server-tests:
+    type: boolean
+    default: false
+  run-web-portal-tests:
+    type: boolean
+    default: false
+
+jobs:
+  test-server:
+    docker:
+      - image: cimg/node:18.16
+    steps:
+      - checkout
+      - node/install-packages:
+          pkg-manager: npm
+          app-dir: ~/project/server
+      - run:
+          name: Run Server Tests
+          command: cd server && npm test
+
+  test-web-portal:
+    docker:
+      - image: cimg/node:18.16
+    steps:
+      - checkout
+      - node/install-packages:
+          pkg-manager: npm
+          app-dir: ~/project/web-portal
+      - run:
+          name: Run Web Portal Tests
+          command: cd web-portal && npm test
+
+workflows:
+  run-tests:
+    jobs:
+      - test-server:
+          name: Server Tests
+          requires: []
+          filters:
+            branches:
+              ignore: main
+          when:
+            condition:
+              equal: [ true, << pipeline.parameters.run-server-tests >> ]
+
+      - test-web-portal:
+          name: Web Portal Tests
+          requires: []
+          filters:
+            branches:
+              ignore: main
+          when:
+            condition:
+              equal: [ true, << pipeline.parameters.run-web-portal-tests >> ]
