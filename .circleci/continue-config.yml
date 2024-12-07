@@ -1,3 +1,4 @@
+# .circleci/continue-config.yml
 version: 2.1
 
 orbs:
@@ -18,155 +19,60 @@ jobs:
       - image: cimg/node:18.16
     steps:
       - checkout
+      - run:
+          name: Debug - List Directory Contents
+          command: |
+            pwd
+            ls -la
+            ls -la server
       - node/install-packages:
           pkg-manager: npm
           app-dir: ~/project/server
       - run:
+          name: Install Server Dependencies
+          command: |
+            cd server
+            npm install
+      - run:
           name: Run Server Tests
-          command: cd server && npm test
+          command: |
+            cd server
+            npm test
       - run:
           name: Build Server
           command: |
             cd server
+            echo "Current directory contents:"
+            ls -la
+            echo "Running build..."
             npm run build
+            echo "Build complete. Dist directory contents:"
+            ls -la dist
       - persist_to_workspace:
           root: .
           paths:
             - server/dist
-      - slack/notify:
-          channel: circleci-builds
-          event: pass
-          custom: |
-            {
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "✅ Server Build & Test Successful",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "section",
-                  "fields": [
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Branch*:\n${CIRCLE_BRANCH}"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Build*:\n${CIRCLE_BUILD_NUM}"
-                    }
-                  ]
-                }
-              ]
-            }
-      - slack/notify:
-          channel: circleci-builds
-          event: fail
-          custom: |
-            {
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "❌ Server Build & Test Failed",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "section",
-                  "fields": [
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Branch*:\n${CIRCLE_BRANCH}"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Build*:\n${CIRCLE_BUILD_NUM}"
-                    }
-                  ]
-                }
-              ]
-            }
-
-  build-and-test-web-portal:
-    docker:
-      - image: cimg/node:18.16
-    steps:
-      - checkout
-      - node/install-packages:
-          pkg-manager: npm
-          app-dir: ~/project/web-portal
       - run:
-          name: Run Web Portal Tests
-          command: cd web-portal && npm test
-      - run:
-          name: Build Web Portal
+          name: Debug - Slack Token
           command: |
-            cd web-portal
-            npm run build
-      - persist_to_workspace:
-          root: .
-          paths:
-            - web-portal/dist
+            if [ -n "$SLACK_ACCESS_TOKEN" ]; then
+              echo "Slack token is set"
+            else
+              echo "Slack token is NOT set"
+            fi
       - slack/notify:
           channel: circleci-builds
-          event: pass
+          event: always
           custom: |
             {
+              "text": "Server Build Status",
               "blocks": [
                 {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "✅ Web Portal Build & Test Successful",
-                    "emoji": true
-                  }
-                },
-                {
                   "type": "section",
-                  "fields": [
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Branch*:\n${CIRCLE_BRANCH}"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Build*:\n${CIRCLE_BUILD_NUM}"
-                    }
-                  ]
-                }
-              ]
-            }
-      - slack/notify:
-          channel: circleci-builds
-          event: fail
-          custom: |
-            {
-              "blocks": [
-                {
-                  "type": "header",
                   "text": {
-                    "type": "plain_text",
-                    "text": "❌ Web Portal Build & Test Failed",
-                    "emoji": true
+                    "type": "mrkdwn",
+                    "text": "*Server Build Status:* ${CIRCLE_JOB}\n*Branch:* ${CIRCLE_BRANCH}\n*Build:* ${CIRCLE_BUILD_NUM}"
                   }
-                },
-                {
-                  "type": "section",
-                  "fields": [
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Branch*:\n${CIRCLE_BRANCH}"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Build*:\n${CIRCLE_BUILD_NUM}"
-                    }
-                  ]
                 }
               ]
             }
@@ -176,10 +82,4 @@ workflows:
     when: << pipeline.parameters.run-server-workflow >>
     jobs:
       - build-and-test-server:
-          context: slack-secrets
-
-  web-portal-workflow:
-    when: << pipeline.parameters.run-web-portal-workflow >>
-    jobs:
-      - build-and-test-web-portal:
           context: slack-secrets

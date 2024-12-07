@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
-// v0.0.4
+// v0.0.5 -- used to trigger circleci for debug/testing
 
 const app = express();
 const port = process.env.PORT || 3000;
