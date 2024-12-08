@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 
-// v0.0.6 - used for debug/testing circleci
+// v0.0.7 - used for debug/testing circleci
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <App />

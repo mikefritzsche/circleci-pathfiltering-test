@@ -4,7 +4,6 @@ orbs:
   node: circleci/node@5.1.0
   slack: circleci/slack@4.12.5
 
-# Pipeline Parameters
 parameters:
   run-server-workflow:
     type: boolean
@@ -13,7 +12,6 @@ parameters:
     type: boolean
     default: false
 
-# Job Definitions
 jobs:
   build-and-test-server:
     docker:
@@ -55,19 +53,16 @@ jobs:
           channel: circleci-builds
           template: basic_success_1
 
-# Workflow Definitions
 workflows:
-  build-test:
-    when:
-      or:
-        - << pipeline.parameters.run-server-workflow >>
-        - << pipeline.parameters.run-web-portal-workflow >>
+  version: 2
+  server-workflow:
+    when: << pipeline.parameters.run-server-workflow >>
     jobs:
       - build-and-test-server:
           context: slack-secrets
-          when:
-            condition: << pipeline.parameters.run-server-workflow >>
+
+  web-portal-workflow:
+    when: << pipeline.parameters.run-web-portal-workflow >>
+    jobs:
       - build-and-test-web-portal:
           context: slack-secrets
-          when:
-            condition: << pipeline.parameters.run-web-portal-workflow >>
