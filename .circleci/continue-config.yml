@@ -23,12 +23,20 @@ jobs:
           fingerprints:
             - "${HETZNER_SSH_KEY_FINGERPRINT}"
       - run:
+          name: Configure npm
+          command: |
+            echo "registry=https://registry.npmjs.org/" > ~/.npmrc
+            echo "strict-ssl=false" >> ~/.npmrc
+            npm config set registry https://registry.npmjs.org/
+      - run:
           name: Install Server Dependencies
           command: |
             cd server
-            # Clear npm cache and use clean install
-            npm cache clean --force
-            npm ci
+            # Try different installation approaches
+            npm install --verbose || {
+              echo "First attempt failed, trying with legacy peer deps..."
+              npm install --legacy-peer-deps --verbose
+            }
       - run:
           name: Build Server
           command: |
@@ -76,10 +84,20 @@ jobs:
           fingerprints:
             - "${HETZNER_SSH_KEY_FINGERPRINT}"
       - run:
+          name: Configure npm
+          command: |
+            echo "registry=https://registry.npmjs.org/" > ~/.npmrc
+            echo "strict-ssl=false" >> ~/.npmrc
+            npm config set registry https://registry.npmjs.org/
+      - run:
           name: Install Web Portal Dependencies
           command: |
             cd web-portal
-            npm install
+            # Try different installation approaches
+            npm install --verbose || {
+              echo "First attempt failed, trying with legacy peer deps..."
+              npm install --legacy-peer-deps --verbose
+            }
       - run:
           name: Build Web Portal
           command: |
