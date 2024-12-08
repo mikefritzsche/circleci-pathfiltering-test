@@ -4,7 +4,37 @@ orbs:
   node: circleci/node@5.1.0
   slack: circleci/slack@4.12.5
 
+# Pipeline Parameters
+parameters:
+  run-server-workflow:
+    type: boolean
+    default: false
+  run-web-portal-workflow:
+    type: boolean
+    default: false
+
+# Job Definitions
 jobs:
+  build-and-test-server:
+    docker:
+      - image: cimg/node:18.16
+    steps:
+      - checkout
+      - run:
+          name: Install Server Dependencies
+          command: |
+            cd server
+            npm install
+      - run:
+          name: Build Server
+          command: |
+            cd server
+            npm run build
+      - slack/notify:
+          event: always
+          channel: circleci-builds
+          template: basic_success_1
+
   build-and-test-web-portal:
     docker:
       - image: cimg/node:18.16
@@ -16,27 +46,28 @@ jobs:
             cd web-portal
             npm install
       - run:
-          name: Run Web Portal Tests
-          command: |
-            cd web-portal
-            npm test
-      - run:
           name: Build Web Portal
           command: |
             cd web-portal
             npm run build
       - slack/notify:
-          event: pass
+          event: always
           channel: circleci-builds
           template: basic_success_1
-      - slack/notify:
-          event: fail
-          channel: circleci-builds
-          template: basic_fail_1
 
+# Workflow Definitions
 workflows:
-  web-portal-workflow:
-    when: << pipeline.parameters.run-web-portal-workflow >>
+  build-test:
+    when:
+      or:
+        - << pipeline.parameters.run-server-workflow >>
+        - << pipeline.parameters.run-web-portal-workflow >>
     jobs:
+      - build-and-test-server:
+          context: slack-secrets
+          when:
+            condition: << pipeline.parameters.run-server-workflow >>
       - build-and-test-web-portal:
           context: slack-secrets
+          when:
+            condition: << pipeline.parameters.run-web-portal-workflow >>

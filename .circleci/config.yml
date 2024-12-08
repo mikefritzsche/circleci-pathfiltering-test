@@ -7,13 +7,14 @@ orbs:
   slack: circleci/slack@4.12.5
 
 workflows:
+  version: 2
   always-run:
     jobs:
       - path-filtering/filter:
           name: check-updated-files
           mapping: |
-            server/.* run-server-workflow true
-            web-portal/.* run-web-portal-workflow true
+            server/.* run-server-workflow=true
+            web-portal/.* run-web-portal-workflow=true
           base-revision: main
           config-path: .circleci/continue-config.yml
           context: slack-secrets
@@ -22,7 +23,3 @@ workflows:
                 event: pass
                 channel: circleci-builds
                 template: basic_success_1
-            - slack/notify:
-                event: fail
-                channel: circleci-builds
-                template: basic_fail_1
