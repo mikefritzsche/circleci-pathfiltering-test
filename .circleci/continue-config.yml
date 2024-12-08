@@ -33,15 +33,32 @@ jobs:
             cd server
             npm run build
       - run:
-          name: Deploy to Hetzner VPS
+          name: Setup SSH and Deploy to Hetzner VPS
           command: |
-            # Add Hetzner VPS to known hosts
-            ssh-keyscan -H ${HETZNER_VPS_HOST} >> ~/.ssh/known_hosts
-            # Create deployment directory if it doesn't exist
+            # Enable SSH debugging
+            set -x
+            
+            # Create .ssh directory and set permissions
+            mkdir -p ~/.ssh
+            chmod 700 ~/.ssh
+            
+            # Clear known_hosts to avoid any stale entries
+            rm -f ~/.ssh/known_hosts
+            
+            # Add Hetzner VPS to known hosts with strict host key checking disabled for first connection
+            ssh-keyscan -H ${HETZNER_VPS_HOST} >> ~/.ssh/known_hosts 2>/dev/null
+            
+            # Test SSH connection first
+            ssh -o "StrictHostKeyChecking=no" -o "BatchMode=yes" ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST} "echo 'SSH connection successful'"
+            
+            # If connection test passed, proceed with deployment
+            echo "Creating deployment directory..."
             ssh ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST} "mkdir -p ~/deployments/server"
-            # Copy build files to server
+            
+            echo "Copying build files..."
             scp -r server/dist/* ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST}:~/deployments/server/
-            # Restart application (adjust command based on your setup)
+            
+            # echo "Restarting application..."
             # ssh ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST} "cd ~/deployments/server && pm2 restart server || pm2 start dist/index.js --name server"
       - slack/notify:
           event: always
@@ -67,15 +84,32 @@ jobs:
             cd web-portal
             npm run build
       - run:
-          name: Deploy to Hetzner VPS
+          name: Setup SSH and Deploy to Hetzner VPS
           command: |
-            # Add Hetzner VPS to known hosts
-            ssh-keyscan -H ${HETZNER_VPS_HOST} >> ~/.ssh/known_hosts
-            # Create deployment directory if it doesn't exist
+            # Enable SSH debugging
+            set -x
+            
+            # Create .ssh directory and set permissions
+            mkdir -p ~/.ssh
+            chmod 700 ~/.ssh
+            
+            # Clear known_hosts to avoid any stale entries
+            rm -f ~/.ssh/known_hosts
+            
+            # Add Hetzner VPS to known hosts with strict host key checking disabled for first connection
+            ssh-keyscan -H ${HETZNER_VPS_HOST} >> ~/.ssh/known_hosts 2>/dev/null
+            
+            # Test SSH connection first
+            ssh -o "StrictHostKeyChecking=no" -o "BatchMode=yes" ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST} "echo 'SSH connection successful'"
+            
+            # If connection test passed, proceed with deployment
+            echo "Creating deployment directory..."
             ssh ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST} "mkdir -p ~/deployments/web-portal"
-            # Copy build files to server
+            
+            echo "Copying build files..."
             scp -r web-portal/dist/* ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST}:~/deployments/web-portal/
-            # Restart nginx if needed
+            
+            # echo "Restarting nginx..."
             # ssh ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST} "sudo systemctl reload nginx"
       - slack/notify:
           event: always
