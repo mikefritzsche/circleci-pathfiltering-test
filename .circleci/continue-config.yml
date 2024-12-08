@@ -25,17 +25,23 @@ jobs:
       - run:
           name: Configure npm
           command: |
-            echo "registry=https://registry.npmjs.org/" > ~/.npmrc
-            echo "strict-ssl=false" >> ~/.npmrc
+            # Use the official registry with increased timeout and retries
             npm config set registry https://registry.npmjs.org/
+            npm config set fetch-retry-maxtimeout 600000
+            npm config set fetch-retry-mintimeout 20000
+            npm config set fetch-retries 5
+            # Try alternate registry if official fails
+            npm config set registry https://registry.npmmirror.com/ || npm config set registry https://registry.npmjs.org/
       - run:
           name: Install Server Dependencies
           command: |
             cd server
-            # Try different installation approaches
-            npm install --verbose || {
+            # Clear existing npm cache
+            npm cache clean --force
+            # Install with retries and network timeout
+            npm install --network-timeout=100000 --verbose || {
               echo "First attempt failed, trying with legacy peer deps..."
-              npm install --legacy-peer-deps --verbose
+              npm install --legacy-peer-deps --network-timeout=100000 --verbose
             }
       - run:
           name: Build Server
@@ -86,17 +92,23 @@ jobs:
       - run:
           name: Configure npm
           command: |
-            echo "registry=https://registry.npmjs.org/" > ~/.npmrc
-            echo "strict-ssl=false" >> ~/.npmrc
+            # Use the official registry with increased timeout and retries
             npm config set registry https://registry.npmjs.org/
+            npm config set fetch-retry-maxtimeout 600000
+            npm config set fetch-retry-mintimeout 20000
+            npm config set fetch-retries 5
+            # Try alternate registry if official fails
+            npm config set registry https://registry.npmmirror.com/ || npm config set registry https://registry.npmjs.org/
       - run:
           name: Install Web Portal Dependencies
           command: |
             cd web-portal
-            # Try different installation approaches
-            npm install --verbose || {
+            # Clear existing npm cache
+            npm cache clean --force
+            # Install with retries and network timeout
+            npm install --network-timeout=100000 --verbose || {
               echo "First attempt failed, trying with legacy peer deps..."
-              npm install --legacy-peer-deps --verbose
+              npm install --legacy-peer-deps --network-timeout=100000 --verbose
             }
       - run:
           name: Build Web Portal
