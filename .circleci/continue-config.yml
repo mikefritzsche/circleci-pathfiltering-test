@@ -1,3 +1,4 @@
+# continue-config.yml
 version: 2.1
 
 orbs:
@@ -13,11 +14,14 @@ parameters:
     default: false
 
 jobs:
-  build-and-test-server:
+  build-and-deploy-server:
     docker:
       - image: cimg/node:18.16
     steps:
       - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - "${HETZNER_SSH_KEY_FINGERPRINT}"
       - run:
           name: Install Server Dependencies
           command: |
@@ -28,16 +32,30 @@ jobs:
           command: |
             cd server
             npm run build
+      - run:
+          name: Deploy to Hetzner VPS
+          command: |
+            # Add Hetzner VPS to known hosts
+            ssh-keyscan -H ${HETZNER_VPS_HOST} >> ~/.ssh/known_hosts
+            # Create deployment directory if it doesn't exist
+            ssh ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST} "mkdir -p ~/deployments/server"
+            # Copy build files to server
+            scp -r server/dist/* ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST}:~/deployments/server/
+            # Restart application (adjust command based on your setup)
+            # ssh ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST} "cd ~/deployments/server && pm2 restart server || pm2 start dist/index.js --name server"
       - slack/notify:
           event: always
           channel: circleci-builds
           template: basic_success_1
 
-  build-and-test-web-portal:
+  build-and-deploy-web-portal:
     docker:
       - image: cimg/node:18.16
     steps:
       - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - "${HETZNER_SSH_KEY_FINGERPRINT}"
       - run:
           name: Install Web Portal Dependencies
           command: |
@@ -48,6 +66,17 @@ jobs:
           command: |
             cd web-portal
             npm run build
+      - run:
+          name: Deploy to Hetzner VPS
+          command: |
+            # Add Hetzner VPS to known hosts
+            ssh-keyscan -H ${HETZNER_VPS_HOST} >> ~/.ssh/known_hosts
+            # Create deployment directory if it doesn't exist
+            ssh ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST} "mkdir -p ~/deployments/web-portal"
+            # Copy build files to server
+            scp -r web-portal/dist/* ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST}:~/deployments/web-portal/
+            # Restart nginx if needed
+            # ssh ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST} "sudo systemctl reload nginx"
       - slack/notify:
           event: always
           channel: circleci-builds
@@ -58,11 +87,15 @@ workflows:
   server-workflow:
     when: << pipeline.parameters.run-server-workflow >>
     jobs:
-      - build-and-test-server:
-          context: slack-secrets
+      - build-and-deploy-server:
+          context:
+            - slack-secrets
+            - hetzner-deploy-secrets
 
   web-portal-workflow:
     when: << pipeline.parameters.run-web-portal-workflow >>
     jobs:
-      - build-and-test-web-portal:
-          context: slack-secrets
+      - build-and-deploy-web-portal:
+          context:
+            - slack-secrets
+            - hetzner-deploy-secrets

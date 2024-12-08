@@ -1,3 +1,4 @@
+# config.yml
 version: 2.1
 
 setup: true
@@ -11,13 +12,14 @@ workflows:
     jobs:
       - path-filtering/filter:
           name: check-updated-files
-          # The mapping needs to be exactly in this format
           mapping: |
             server/.* run-server-workflow true
             web-portal/.* run-web-portal-workflow true
           base-revision: main
           config-path: .circleci/continue-config.yml
-          context: slack-secrets
+          context:
+            - slack-secrets
+            - hetzner-deploy-secrets
           post-steps:
             - slack/notify:
                 event: pass
