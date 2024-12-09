@@ -1,0 +1,7 @@
+# web-portal/.dockerignore
+node_modules
+.env.local
+.git
+.gitignore
+*.log
+dist
