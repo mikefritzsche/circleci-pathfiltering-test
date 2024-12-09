@@ -1,3 +1,4 @@
+# web-portal/Dockerfile
 FROM node:18.18.0-alpine as builder
 
 WORKDIR /app
@@ -18,9 +19,11 @@ FROM nginx:alpine
 # Copy built assets from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Create required directory and copy nginx config
+# Create nginx config directory
 RUN mkdir -p /etc/nginx/conf.d
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copy nginx config - use full path relative to build context
+COPY ./web-portal/nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
