@@ -1,4 +1,3 @@
-# server/Dockerfile
 FROM node:18.18.0-alpine as builder
 
 WORKDIR /app
@@ -7,11 +6,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 
-# Copy everything except what's in .dockerignore
+# Copy source code and config files first
 COPY . .
-
-# Use production env file
-COPY .env.example .env
 
 # Build the application
 RUN npm run build
@@ -27,9 +23,11 @@ COPY package*.json ./
 # Install only production dependencies
 RUN npm ci --only=production
 
-# Copy built files
+# Copy built files from builder stage
 COPY --from=builder /app/dist ./dist
-COPY .env .env
+
+# Create a default .env if not exists
+RUN echo "PORT=3000\nNODE_ENV=production" > .env
 
 EXPOSE 3000
 CMD ["npm", "start"]
