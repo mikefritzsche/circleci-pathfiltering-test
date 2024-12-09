@@ -21,11 +21,6 @@ jobs:
       - checkout
       - setup_remote_docker:
           docker_layer_caching: true
-      - run:
-          name: Prepare environment
-          command: |
-            cd server
-            cp .env.example .env
       - docker/build:
           image: rekkoo-server
           path: ./server
@@ -39,6 +34,7 @@ jobs:
       - run:
           name: Deploy to Hetzner VPS
           command: |
+            mkdir -p ~/.ssh
             mkdir -p ~/.ssh
             chmod 700 ~/.ssh
             ssh-keyscan -H ${HETZNER_VPS_HOST} >> ~/.ssh/known_hosts 2>/dev/null
@@ -66,11 +62,6 @@ jobs:
       - checkout
       - setup_remote_docker:
           docker_layer_caching: true
-      - run:
-          name: Prepare environment
-          command: |
-            cd web-portal
-            cp .env.example .env
       - docker/build:
           image: rekkoo-web-portal
           path: ./web-portal
@@ -91,4 +82,33 @@ jobs:
             echo "Copying files..."
             scp rekkoo-web-portal.tar.gz ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST}:/home/rekkoo/web-portal/
             scp web-portal/.env ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST}:/home/rekkoo/web-portal/
-            scp web-portal
+            scp web-portal/docker-compose.yml ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST}:/home/rekkoo/web-portal/
+            
+            ssh -o StrictHostKeyChecking=no ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST} \
+              "cd /home/rekkoo/web-portal && \
+              docker load < rekkoo-web-portal.tar.gz && \
+              docker-compose down && \
+              docker-compose up -d && \
+              rm rekkoo-web-portal.tar.gz"
+      - slack/notify:
+          event: always
+          channel: circleci-builds
+          template: basic_success_1
+
+workflows:
+  version: 2
+  server-workflow:
+    when: << pipeline.parameters.run-server-workflow >>
+    jobs:
+      - build-and-deploy-server:
+          context:
+            - slack-secrets
+            - hetzner-deploy-secrets
+
+  web-portal-workflow:
+    when: << pipeline.parameters.run-web-portal-workflow >>
+    jobs:
+      - build-and-deploy-web-portal:
+          context:
+            - slack-secrets
+            - hetzner-deploy-secrets
