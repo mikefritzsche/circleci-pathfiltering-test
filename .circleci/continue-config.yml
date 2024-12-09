@@ -21,6 +21,16 @@ jobs:
       - checkout
       - setup_remote_docker:
           docker_layer_caching: true
+      - run:
+          name: Prepare Environment
+          command: |
+            cd server
+            if [ -f .env.example ]; then
+              cp .env.example .env
+            else
+              echo "PORT=3000" > .env
+              echo "NODE_ENV=production" >> .env
+            fi
       - docker/build:
           image: rekkoo-server
           path: ./server
@@ -34,7 +44,6 @@ jobs:
       - run:
           name: Deploy to Hetzner VPS
           command: |
-            mkdir -p ~/.ssh
             mkdir -p ~/.ssh
             chmod 700 ~/.ssh
             ssh-keyscan -H ${HETZNER_VPS_HOST} >> ~/.ssh/known_hosts 2>/dev/null
@@ -62,6 +71,16 @@ jobs:
       - checkout
       - setup_remote_docker:
           docker_layer_caching: true
+      - run:
+          name: Prepare Environment
+          command: |
+            cd web-portal
+            if [ -f .env.example ]; then
+              cp .env.example .env
+            else
+              echo "VITE_API_URL=http://server.rekkoo.com" > .env
+              echo "NODE_ENV=production" >> .env
+            fi
       - docker/build:
           image: rekkoo-web-portal
           path: ./web-portal
@@ -83,6 +102,7 @@ jobs:
             scp rekkoo-web-portal.tar.gz ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST}:/home/rekkoo/web-portal/
             scp web-portal/.env ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST}:/home/rekkoo/web-portal/
             scp web-portal/docker-compose.yml ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST}:/home/rekkoo/web-portal/
+            scp web-portal/nginx.conf ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST}:/home/rekkoo/web-portal/
             
             ssh -o StrictHostKeyChecking=no ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST} \
               "cd /home/rekkoo/web-portal && \
