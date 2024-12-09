@@ -2,7 +2,7 @@
 version: 2.1
 
 orbs:
-  node: circleci/node@5.1.0
+  docker: circleci/docker@2.4.0
   slack: circleci/slack@4.12.5
 
 parameters:
@@ -16,66 +16,39 @@ parameters:
 jobs:
   build-and-deploy-server:
     docker:
-      - image: cimg/node:18.18.0
+      - image: cimg/base:2024.01
     steps:
       - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - docker/build:
+          image: rekkoo-server
+          path: ./server
+      - run:
+          name: Save Docker image
+          command: |
+            docker save rekkoo-server:latest | gzip > rekkoo-server.tar.gz
       - add_ssh_keys:
           fingerprints:
             - "${HETZNER_SSH_KEY_FINGERPRINT}"
       - run:
-          name: Configure npm
+          name: Deploy to Hetzner VPS
           command: |
-            # Use the official registry with increased timeout and retries
-            npm config set registry https://registry.npmjs.org/
-            npm config set fetch-retry-maxtimeout 600000
-            npm config set fetch-retry-mintimeout 20000
-            npm config set fetch-retries 5
-            # Try alternate registry if official fails
-            npm config set registry https://registry.npmmirror.com/ || npm config set registry https://registry.npmjs.org/
-      - run:
-          name: Install Server Dependencies
-          command: |
-            cd server
-            # Clear existing npm cache
-            npm cache clean --force
-            # Install with retries and network timeout
-            npm install --network-timeout=100000 --verbose || {
-              echo "First attempt failed, trying with legacy peer deps..."
-              npm install --legacy-peer-deps --network-timeout=100000 --verbose
-            }
-      - run:
-          name: Build Server
-          command: |
-            cd server
-            npm run build
-      - run:
-          name: Setup SSH and Deploy to Hetzner VPS
-          command: |
-            # Enable SSH debugging
-            set -x
-            
-            # Create .ssh directory and set permissions
             mkdir -p ~/.ssh
             chmod 700 ~/.ssh
-            
-            # Clear known_hosts to avoid any stale entries
-            rm -f ~/.ssh/known_hosts
-            
-            # Add Hetzner VPS to known hosts with strict host key checking disabled for first connection
             ssh-keyscan -H ${HETZNER_VPS_HOST} >> ~/.ssh/known_hosts 2>/dev/null
             
-            # Test SSH connection first
-            ssh -o "StrictHostKeyChecking=no" -o "BatchMode=yes" ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST} "echo 'SSH connection successful'"
+            echo "Copying files..."
+            scp rekkoo-server.tar.gz ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST}:/home/rekkoo/server/
+            scp server/.env ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST}:/home/rekkoo/server/
+            scp server/docker-compose.yml ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST}:/home/rekkoo/server/
             
-            # If connection test passed, proceed with deployment
-            echo "Creating deployment directory..."
-            ssh ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST} "mkdir -p ~/deployments/server"
-            
-            echo "Copying build files..."
-            scp -r server/dist/* ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST}:~/deployments/server/
-            
-            # echo "Restarting application..."
-            # ssh ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST} "cd ~/deployments/server && pm2 restart server || pm2 start dist/index.js --name server"
+            ssh -o StrictHostKeyChecking=no ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST} \
+              "cd /home/rekkoo/server && \
+              docker load < rekkoo-server.tar.gz && \
+              docker-compose down && \
+              docker-compose up -d && \
+              rm rekkoo-server.tar.gz"
       - slack/notify:
           event: always
           channel: circleci-builds
@@ -83,66 +56,39 @@ jobs:
 
   build-and-deploy-web-portal:
     docker:
-      - image: cimg/node:18.18.0
+      - image: cimg/base:2024.01
     steps:
       - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - docker/build:
+          image: rekkoo-web-portal
+          path: ./web-portal
+      - run:
+          name: Save Docker image
+          command: |
+            docker save rekkoo-web-portal:latest | gzip > rekkoo-web-portal.tar.gz
       - add_ssh_keys:
           fingerprints:
             - "${HETZNER_SSH_KEY_FINGERPRINT}"
       - run:
-          name: Configure npm
+          name: Deploy to Hetzner VPS
           command: |
-            # Use the official registry with increased timeout and retries
-            npm config set registry https://registry.npmjs.org/
-            npm config set fetch-retry-maxtimeout 600000
-            npm config set fetch-retry-mintimeout 20000
-            npm config set fetch-retries 5
-            # Try alternate registry if official fails
-            npm config set registry https://registry.npmmirror.com/ || npm config set registry https://registry.npmjs.org/
-      - run:
-          name: Install Web Portal Dependencies
-          command: |
-            cd web-portal
-            # Clear existing npm cache
-            npm cache clean --force
-            # Install with retries and network timeout
-            npm install --network-timeout=100000 --verbose || {
-              echo "First attempt failed, trying with legacy peer deps..."
-              npm install --legacy-peer-deps --network-timeout=100000 --verbose
-            }
-      - run:
-          name: Build Web Portal
-          command: |
-            cd web-portal
-            npm run build
-      - run:
-          name: Setup SSH and Deploy to Hetzner VPS
-          command: |
-            # Enable SSH debugging
-            set -x
-            
-            # Create .ssh directory and set permissions
             mkdir -p ~/.ssh
             chmod 700 ~/.ssh
-            
-            # Clear known_hosts to avoid any stale entries
-            rm -f ~/.ssh/known_hosts
-            
-            # Add Hetzner VPS to known hosts with strict host key checking disabled for first connection
             ssh-keyscan -H ${HETZNER_VPS_HOST} >> ~/.ssh/known_hosts 2>/dev/null
             
-            # Test SSH connection first
-            ssh -o "StrictHostKeyChecking=no" -o "BatchMode=yes" ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST} "echo 'SSH connection successful'"
+            echo "Copying files..."
+            scp rekkoo-web-portal.tar.gz ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST}:/home/rekkoo/web-portal/
+            scp web-portal/.env ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST}:/home/rekkoo/web-portal/
+            scp web-portal/docker-compose.yml ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST}:/home/rekkoo/web-portal/
             
-            # If connection test passed, proceed with deployment
-            echo "Creating deployment directory..."
-            ssh ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST} "mkdir -p ~/deployments/web-portal"
-            
-            echo "Copying build files..."
-            scp -r web-portal/dist/* ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST}:~/deployments/web-portal/
-            
-            # echo "Restarting nginx..."
-            # ssh ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST} "sudo systemctl reload nginx"
+            ssh -o StrictHostKeyChecking=no ${HETZNER_DEPLOY_USER}@${HETZNER_VPS_HOST} \
+              "cd /home/rekkoo/web-portal && \
+              docker load < rekkoo-web-portal.tar.gz && \
+              docker-compose down && \
+              docker-compose up -d && \
+              rm rekkoo-web-portal.tar.gz"
       - slack/notify:
           event: always
           channel: circleci-builds
