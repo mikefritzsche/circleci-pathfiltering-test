@@ -35,6 +35,7 @@ jobs:
           name: Deploy to Hetzner VPS
           command: |
             mkdir -p ~/.ssh
+            mkdir -p ~/.ssh
             chmod 700 ~/.ssh
             ssh-keyscan -H ${HETZNER_VPS_HOST} >> ~/.ssh/known_hosts 2>/dev/null
             
